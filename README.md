@@ -2,7 +2,7 @@
 
 This is the reverse proxy for your Ngx Workshop infrastructure. It proxies API and WebSocket requests to the NestJS server and optionally proxies frontend app requests to DigitalOcean Spaces or another Droplet.
 
-```
+```bash
 # Create base folder and navigate into it
 mkdir ngx-nginx-proxy && cd ngx-nginx-proxy
 
@@ -114,8 +114,43 @@ jobs:
             docker run -d --name nginx -p 80:80 ngx-nginx-proxy
 ```
 
-### ✅ To Do Next
-- [ ] Create the actual GitHub repo and push this base structure
-- [ ] Add secrets to the repo: `DROPLET_IP`, `SSH_PRIVATE_KEY`
-- [ ] Test GitHub Actions deployment
-- [ ] Configure domain + SSL once base routing is confirmed
+### 🛠️ DigitalOcean Droplet setup `./bootstrap-nginx.sh`
+
+``` bash
+#!/bin/bash
+
+echo "🔧 Updating system..."
+apt update && apt upgrade -y
+
+echo "🐳 Installing Docker..."
+apt install -y apt-transport-https ca-certificates curl software-properties-common gnupg lsb-release
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+  https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+  > /etc/apt/sources.list.d/docker.list
+
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+echo "✅ Docker installed"
+
+echo "🔐 Configuring firewall (UFW)..."
+apt install -y ufw
+ufw allow OpenSSH
+ufw allow http
+ufw allow https
+ufw --force enable
+
+echo "✅ UFW configured"
+
+echo "📁 Creating /opt/ngx-nginx-proxy directory..."
+mkdir -p /opt/ngx-nginx-proxy
+
+echo "🧪 Testing Docker install..."
+docker run --rm hello-world
+
+echo "🎉 Done! Your Nginx proxy box is ready to go."
+```
