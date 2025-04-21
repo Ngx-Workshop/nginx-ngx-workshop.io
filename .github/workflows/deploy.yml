@@ -35,6 +35,10 @@ jobs:
             docker build -t ngx-nginx-proxy .
             docker stop nginx || true
             docker rm nginx || true
-            docker run -d --name nginx -p 80:80 ngx-nginx-proxy
+            docker run -d \
+              --name nginx \
+              -p 80:80 -p 443:443 \
+              -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              ngx-nginx-proxy
             sed -i 's/proxy_pass http:\/\/api-server:3000;/proxy_pass http:\/\/localhost:3000;/' docker/nginx.conf
             docker restart nginx
