@@ -40,5 +40,4 @@ jobs:
               -p 80:80 -p 443:443 \
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
               ngx-nginx-proxy
-            sed -i 's/proxy_pass http:\/\/api-server:3000;/proxy_pass http:\/\/localhost:3000;/' docker/nginx.conf
             docker restart nginx
