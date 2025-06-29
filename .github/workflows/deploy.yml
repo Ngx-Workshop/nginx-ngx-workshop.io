@@ -39,5 +39,6 @@ jobs:
               --name nginx \
               -p 80:80 -p 443:443 \
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
+              -v /opt/ngx-angular-shell:/opt/ngx-angular-shell:ro \
               ngx-nginx-proxy
             docker restart nginx
