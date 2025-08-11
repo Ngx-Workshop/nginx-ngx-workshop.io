@@ -42,5 +42,6 @@ jobs:
               -v /opt/ngx-angular-shell:/opt/ngx-angular-shell:ro \
               -v /opt/ngx-mfe-orchestrator-ui:/opt/ngx-mfe-orchestrator-ui:ro \
               -v /opt/ngx-auth-ui/browser:/opt/ngx-auth-ui/browser:ro \
+              -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
               ngx-nginx-proxy
             docker restart nginx
