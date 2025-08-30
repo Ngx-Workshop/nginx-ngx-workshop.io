@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build Docker image
-        run: docker build -t ngx-nginx-proxy .
+        run: docker build -t nginx-ngx-workshop.io .
 
       - name: Copy files to Droplet
         uses: appleboy/scp-action@master
@@ -22,7 +22,7 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "."
-          target: "/opt/ngx-nginx-proxy"
+          target: "/opt/nginx-ngx-workshop.io"
 
       - name: SSH and restart Docker container
         uses: appleboy/ssh-action@master
@@ -31,8 +31,8 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/ngx-nginx-proxy
-            docker build -t ngx-nginx-proxy .
+            cd /opt/nginx-ngx-workshop.io
+            docker build -t nginx-ngx-workshop.io .
             docker stop nginx || true
             docker rm nginx || true
             docker run -d \
@@ -43,5 +43,5 @@ jobs:
               -v /opt/ngx-mfe-orchestrator-ui:/opt/ngx-mfe-orchestrator-ui:ro \
               -v /opt/ngx-auth-ui/browser:/opt/ngx-auth-ui/browser:ro \
               -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
-              ngx-nginx-proxy
+              nginx-ngx-workshop.io
             docker restart nginx
