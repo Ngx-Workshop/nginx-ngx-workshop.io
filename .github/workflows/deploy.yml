@@ -41,7 +41,7 @@ jobs:
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
               -v /opt/ngx-angular-shell:/opt/ngx-angular-shell:ro \
               -v /opt/mfe-shell-admin:/opt/mfe-shell-admin:ro \
-              -v /opt/ngx-auth-ui/browser:/opt/ngx-auth-ui/browser:ro \
+              -v /opt/app-authentication/browser:/opt/app-authentication/browser:ro \
               -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
               nginx-ngx-workshop.io
             docker restart nginx
