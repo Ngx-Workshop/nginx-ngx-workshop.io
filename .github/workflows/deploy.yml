@@ -41,6 +41,7 @@ jobs:
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
               -v /opt/mfe-shell-workshop:/opt/mfe-shell-workshop:ro \
               -v /opt/mfe-shell-admin:/opt/mfe-shell-admin:ro \
+              -v /opt/mfe-remotes:/opt/mfe-remotes:ro \
               -v /opt/app-authentication/browser:/opt/app-authentication/browser:ro \
               -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
               nginx-ngx-workshop.io
