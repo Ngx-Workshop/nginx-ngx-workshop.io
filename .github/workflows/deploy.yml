@@ -1,48 +1,112 @@
-name: Deploy Nginx to DO Droplet
+name: Deploy nginx-ngx-workshop.io
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nginx-ngx-workshop.io-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Build Docker image
-        run: docker build -t nginx-ngx-workshop.io .
-
-      - name: Copy files to Droplet
-        uses: appleboy/scp-action@master
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          host: ${{ secrets.DROPLET_IP }}
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
-          target: "/opt/nginx-ngx-workshop.io"
+          persist-credentials: false
 
-      - name: SSH and restart Docker container
-        uses: appleboy/ssh-action@master
+      - name: Validate frontend deployment settings
+        env:
+          MFE_DROPLET_IP: ${{ secrets.MFE_DROPLET_IP }}
+          MFE_SSH_PRIVATE_KEY: ${{ secrets.MFE_SSH_PRIVATE_KEY }}
+          MFE_SSH_HOST_FINGERPRINT: ${{ secrets.MFE_SSH_HOST_FINGERPRINT }}
+        run: |
+          test -n "$MFE_DROPLET_IP" || { echo "Missing MFE_DROPLET_IP" >&2; exit 1; }
+          test -n "$MFE_SSH_PRIVATE_KEY" || { echo "Missing MFE_SSH_PRIVATE_KEY" >&2; exit 1; }
+          if [[ ! "$MFE_SSH_HOST_FINGERPRINT" =~ ^SHA256:[A-Za-z0-9+/]{43}$ ]]; then
+            echo "MFE_SSH_HOST_FINGERPRINT must contain only the frontend host's SHA256 fingerprint" >&2
+            exit 1
+          fi
+
+      - name: Build image and prepare source
+        run: |
+          docker build -t nginx-ngx-workshop.io .
+          git archive --format=tar --output=deploy-source.tar HEAD
+
+      - name: Copy source to frontend
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
-          host: ${{ secrets.DROPLET_IP }}
+          version: '1.8.0'
+          host: ${{ secrets.MFE_DROPLET_IP }}
           username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.MFE_SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.MFE_SSH_HOST_FINGERPRINT }}
+          source: deploy-source.tar
+          target: /opt/nginx-ngx-workshop.io
+          overwrite: true
+
+      - name: Validate and recreate Nginx
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          version: '1.8.2'
+          host: ${{ secrets.MFE_DROPLET_IP }}
+          username: root
+          key: ${{ secrets.MFE_SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.MFE_SSH_HOST_FINGERPRINT }}
+          command_timeout: 15m
           script: |
+            set -eu
+            command -v curl >/dev/null
             cd /opt/nginx-ngx-workshop.io
+            trap 'rm -f deploy-source.tar' EXIT
+            tar -xf deploy-source.tar
+            rm -f deploy-source.tar
             docker build -t nginx-ngx-workshop.io .
-            docker stop nginx || true
-            docker rm nginx || true
-            docker run -d \
-              --name nginx \
-              -p 80:80 -p 443:443 \
+            docker run --rm \
               -v /etc/letsencrypt:/etc/letsencrypt:ro \
-              -v /opt/mfe-shell-workshop:/opt/mfe-shell-workshop:ro \
-              -v /opt/mfe-shell-admin:/opt/mfe-shell-admin:ro \
-              -v /opt/mfe-remotes:/opt/mfe-remotes:ro \
-              -v /opt/app-authentication/browser:/opt/app-authentication/browser:ro \
-              -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
-              nginx-ngx-workshop.io
-            docker restart nginx
+              nginx-ngx-workshop.io nginx -t
+
+            start_nginx() {
+              docker run -d \
+                --name nginx \
+                --restart unless-stopped \
+                -p 80:80 -p 443:443 \
+                -v /etc/letsencrypt:/etc/letsencrypt:ro \
+                -v /opt/mfe-shell-workshop:/opt/mfe-shell-workshop:ro \
+                -v /opt/mfe-shell-admin:/opt/mfe-shell-admin:ro \
+                -v /opt/mfe-remotes:/opt/mfe-remotes:ro \
+                -v /opt/app-authentication/browser:/opt/app-authentication/browser:ro \
+                -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
+                "$1"
+            }
+            previous_image=''
+            if docker container inspect nginx >/dev/null 2>&1; then
+              previous_image=$(docker inspect --format '{{.Image}}' nginx)
+              docker image tag "$previous_image" nginx-ngx-workshop.io:previous
+              docker stop nginx
+              docker rm nginx
+            fi
+            rollback() {
+              echo "New Nginx failed startup; restoring the previous image if available" >&2
+              docker rm -f nginx >/dev/null 2>&1 || true
+              if [ -n "$previous_image" ]; then
+                start_nginx "$previous_image"
+              fi
+              exit 1
+            }
+            start_nginx nginx-ngx-workshop.io || rollback
+            attempt=0
+            until [ "$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 http://127.0.0.1/)" = "301" ]; do
+              attempt=$((attempt + 1))
+              if [ "$attempt" -ge 15 ]; then rollback; fi
+              sleep 2
+            done
