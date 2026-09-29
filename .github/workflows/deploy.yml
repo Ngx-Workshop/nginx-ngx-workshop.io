@@ -86,6 +86,7 @@ jobs:
                 -v /opt/mfe-remotes:/opt/mfe-remotes:ro \
                 -v /opt/app-authentication/browser:/opt/app-authentication/browser:ro \
                 -v /opt/ngx-workshop-assets:/opt/ngx-workshop-assets:ro \
+                -v /opt/wesleydusell.com:/opt/wesleydusell.com:ro \
                 "$1"
             }
             previous_image=''
