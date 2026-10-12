@@ -1,10 +1,11 @@
 name: Deploy nginx-ngx-workshop.io
 
 on:
+  pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+
 
 permissions:
   contents: read
@@ -14,8 +15,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate edge and private backhaul configuration
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ngx-certs/live/ngx-workshop.io /tmp/ngx-certs/live/wesleydusell.com
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout /tmp/ngx-certs/key.pem -out /tmp/ngx-certs/cert.pem -subj '/CN=ci-only.example.test'
+          for host in ngx-workshop.io wesleydusell.com; do
+            cp /tmp/ngx-certs/key.pem /tmp/ngx-certs/live/$host/privkey.pem
+            cp /tmp/ngx-certs/cert.pem /tmp/ngx-certs/live/$host/fullchain.pem
+          done
+          cp /tmp/ngx-certs/cert.pem /tmp/ngx-certs/ngx-backhaul-ca.pem
+          cat /tmp/ngx-certs/key.pem /tmp/ngx-certs/cert.pem > /tmp/ngx-certs/backhaul.pem
+          docker build -t ngx-edge:candidate .
+          docker run --rm -v /tmp/ngx-certs:/etc/letsencrypt:ro ngx-edge:candidate nginx -t
+          docker run --rm --entrypoint nginx -v "$PWD/docker/oauth/backhaul.conf:/etc/nginx/nginx.conf:ro" -v /tmp/ngx-certs/backhaul.pem:/run/secrets/backhaul.pem:ro nginx@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 -t
   deploy:
-    if: github.ref == 'refs/heads/main'
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
