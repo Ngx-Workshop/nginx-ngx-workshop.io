@@ -14,3 +14,7 @@ edge-private-IP allowlisting. Runtime auth/gateway ports have no public bindings
 Validate staged edge config with the existing certificate/static mounts before
 recreation. Retain the previous image/container and configuration for rollback.
 CA and private certificates are operator-managed; never place private keys in Git.
+
+## Administrator workshop publishing
+
+Native HTTPS now routes admin.ngx-workshop.io/api/publisher/tools through the existing verified TLS backhaul with Host mcp.ngx-workshop.io. Other hosts cannot use this facade. The MCP hostname additionally exposes /mcp/publishing for authenticated platform administrators. Gateway validates every credential and admin role; read-only catalog OAuth does not authorize publishing. Both hops allow 8 MiB and 180-second requests for publishing while existing catalog limits stay intact. Deploy both nginx configuration changes with the gateway/MFE release. Configuration syntax was checked with temporary local certificates; no production reload occurred.
