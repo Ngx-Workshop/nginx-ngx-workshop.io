@@ -38,7 +38,7 @@ jobs:
           docker run --rm --entrypoint nginx -v "$PWD/docker/oauth/backhaul.conf:/etc/nginx/nginx.conf:ro" -v /tmp/ngx-certs/backhaul.pem:/run/secrets/backhaul.pem:ro nginx@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 -t
   deploy:
     needs: validate
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
