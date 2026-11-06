@@ -17,4 +17,23 @@ CA and private certificates are operator-managed; never place private keys in Gi
 
 ## Administrator workshop publishing
 
-Native HTTPS now routes admin.ngx-workshop.io/api/publisher/tools through the existing verified TLS backhaul with Host mcp.ngx-workshop.io. Other hosts cannot use this facade. The MCP hostname additionally exposes /mcp/publishing for authenticated platform administrators. Gateway validates every credential and admin role; read-only catalog OAuth does not authorize publishing. Both hops allow 8 MiB and 180-second requests for publishing while existing catalog limits stay intact. Deploy both nginx configuration changes with the gateway/MFE release. Configuration syntax was checked with temporary local certificates; no production reload occurred.
+Native HTTPS now routes admin.ngx-workshop.io/api/publisher/tools through the existing verified TLS backhaul with Host mcp.ngx-workshop.io. Other hosts cannot use this facade. The MCP hostname additionally exposes /mcp/publishing for authenticated platform administrators. AI publisher validates every credential and admin role; read-only catalog OAuth does not authorize publishing. Both hops allow 8 MiB and 180-second requests for publishing while existing catalog limits stay intact. Deploy both nginx configuration changes with the gateway/MFE release. Configuration syntax was checked with temporary local certificates; no production reload occurred.
+
+## Direct AI publisher routing — 2026-11-06
+
+Source routing now sends /publisher/tools and /mcp/publishing from the verified
+private backhaul directly to service-ai-publisher:3014. Catalog /mcp and metadata
+still reach service-mcp-gateway:3011. The edge preserves its exact administrator-only
+/api/publisher/tools route, /api stripping, normalized proxy headers, certificate
+verification, 8 MiB limit and 180-second timeout. Publisher validates credentials
+and administrator role. The obsolete /api/ai-publisher seed route now returns 410;
+no publisher host port needs to be exposed.
+
+Deploy the backhaul configuration on the application host as well as the edge
+configuration. The existing edge workflow deploys docker/nginx.conf only; it does
+not install docker/oauth/backhaul.conf on the application host. Back up the live
+mounted backhaul file, update its existing inode, run nginx -t in ngx-oauth-backhaul,
+then reload, restoring the backup on failure. Validate public administrator facade
+401/allowed-Origin preflight and catalog metadata before removing gateway
+compatibility endpoints. Frontend uses publisher contracts and keeps its browser URL.
+These local source changes do not perform deployment/reload or paid generation.
