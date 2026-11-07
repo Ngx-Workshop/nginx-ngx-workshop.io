@@ -37,3 +37,45 @@ then reload, restoring the backup on failure. Validate public administrator faca
 401/allowed-Origin preflight and catalog metadata before removing gateway
 compatibility endpoints. Frontend uses publisher contracts and keeps its browser URL.
 These local source changes do not perform deployment/reload or paid generation.
+
+## Production deployment — 2026-11-06
+
+User authorized update and deployment. Source commits were pushed to main:
+- nginx-ngx-workshop.io: 2f4dea273b7ad91993d886aa8aacdcf44f518fb3.
+- mfe-user-journey-admin-ai-publisher: 574979267e3824da9965b98073ffd1043c48c41c.
+
+The application-host backhaul was backed up under
+/etc/ngx-workshop/releases/direct-publisher-20261106T231435Z. The reviewed source
+matched the expected live baseline; its mounted inode was preserved, nginx -t
+passed and reload succeeded. The edge configuration and previous publisher assets
+were backed up under /opt/ngx-releases/direct-publisher-20261106T231457Z on the edge.
+No service settings, model credentials, receipt storage or content were changed.
+
+Nginx validation/deployment run 42310554724 succeeded. Frontend deployment run
+42310556622 and independent validation run 42310556627 succeeded, including clean
+install, architecture, ChromeHeadless tests, strict app types and production build.
+Both live Nginx configurations hash-match the committed source.
+
+Final public checks:
+- Catalog metadata GET 200; unauthenticated catalog MCP POST 401.
+- Agent publishing POST 401.
+- Admin browser facade POST with allowed Origin/no credentials 401.
+- Allowed-Origin browser preflight 204.
+- Facade on beta host 403; untrusted Origin on admin host 403.
+- Retired /api/ai-publisher GET 410.
+- Public federation remoteEntry.js hash matches the deployed file. Its referenced
+  2181.eee6ef2fa5d7c78e.js chunk serves successfully and contains publisher contract
+  metadata (ngx-workshop-publisher).
+
+The browser URL remains /api/publisher/tools, now routed directly by the TLS
+backhaul to service-ai-publisher:3014. Catalog routing remains on the gateway.
+No paid provider call, signed-in account flow, workshop mutation or receipt write
+was used for verification. Rollback assets/configurations remain preserved.
+
+Deployment links:
+- https://github.com/Ngx-Workshop/nginx-ngx-workshop.io/actions/runs/42310554724
+- https://github.com/Ngx-Workshop/mfe-user-journey-admin-ai-publisher/actions/runs/42310556622
+- https://github.com/Ngx-Workshop/mfe-user-journey-admin-ai-publisher/actions/runs/42310556627
+
+These deployment evidence additions are recorded locally after the functional source
+commits were deployed; no second docs-only deployment was triggered.
