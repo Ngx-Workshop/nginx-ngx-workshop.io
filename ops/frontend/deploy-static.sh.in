@@ -1,0 +1,52 @@
+#!/bin/sh
+# Keep the served directory inode: Nginx bind-mounts these paths.
+set -eu
+project='@@PROJECT@@'
+destination='@@TARGET@@'
+release=${1:?Expected GitHub run ID-attempt}
+printf '%s\n' "$release" | grep -Eq '^[0-9]+-[0-9]+$' || exit 2
+staging="/opt/ngx-frontend-staging/$project/$release"
+source="$staging/site"
+test "$(realpath "$staging")" = "$staging"
+test -d "$source"
+for entry in @@ENTRIES@@; do test -s "$source/$entry"; done
+# Build output is static content, never links into other host directories.
+if find "$source" -type l -print -quit | grep -q .; then
+  echo 'Refusing symbolic links in frontend build' >&2
+  exit 1
+fi
+command -v rsync >/dev/null
+command -v flock >/dev/null
+exec 9>"/var/lock/ngx-static-$project.lock"
+flock -w 600 9
+mkdir -p "$destination"
+test "$(realpath "$destination")" = "$destination"
+backup="$staging/previous"
+mkdir "$backup"
+# A temporary hard-link snapshot protects the previous files without duplicating
+# their contents. Rsync's normal rename behavior preserves this rollback copy.
+cp -al "$destination/." "$backup/"
+promoting=0
+cleanup() {
+  result=$?
+  trap - EXIT HUP INT TERM
+  if [ "$result" -ne 0 ] && [ "$promoting" -eq 1 ]; then
+    if ! rsync -rlt --delete-delay --delay-updates --checksum -- "$backup/" "$destination/"; then
+      echo "Rollback failed; recovery files retained at $backup" >&2
+      exit "$result"
+    fi
+  fi
+  rm -rf -- "$staging"
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' HUP TERM
+promoting=1
+# No --inplace, root directory rename, symlink swap, or image/container restart.
+rsync -rt --delete-delay --delay-updates --checksum --chmod=D755,F644 -- "$source/" "$destination/"
+for entry in @@ENTRIES@@; do
+  cmp "$source/$entry" "$destination/$entry"
+  docker exec nginx test -s "$destination/$entry"
+done
+echo "Deployed $project; obsolete assets removed and Nginx mount verified"
