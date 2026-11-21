@@ -1,0 +1,109 @@
+logging {
+  level = "warn"
+  format = "json"
+}
+
+discovery.docker "nestjs" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name = "status"
+    values = ["running"]
+  }
+}
+
+discovery.relabel "nestjs" {
+  targets = discovery.docker.nestjs.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(ngx-auth-service|ngx-mfe-orchestrator|ngx-workshop-bff|seed-service-nestjs|service-user-metadata|service-nestjs-assessment-test|service-navigational-list|document|backstage|coding-labs|service-uploader|service-mcp-gateway|service-ai-publisher|service-ai-chat)"
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    target_label = "service_name"
+    replacement = "$1"
+  }
+}
+
+loki.source.docker "nestjs" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.nestjs.output
+  labels = {
+    job = "ngx-workshop/nestjs",
+    environment = "production",
+  }
+  forward_to = [loki.process.nestjs.receiver]
+}
+
+loki.process "nestjs" {
+  stage.json {
+    expressions = { level = "level", context = "context" }
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  // Request IDs and contexts remain searchable fields, never high-cardinality labels.
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_LOGS_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_LOGS_USER")
+      password = sys.env("GRAFANA_CLOUD_TOKEN")
+    }
+  }
+}
+
+prometheus.exporter.blackbox "heartbeats" {
+  config_file = "/etc/alloy/blackbox.yml"
+  targets = [
+    { name = "ngx-auth-service", address = "http://ngx-auth-service:3000/health", module = "heartbeat", service_name = "ngx-auth-service" },
+    { name = "ngx-mfe-orchestrator", address = "http://ngx-mfe-orchestrator:3001/health", module = "heartbeat", service_name = "ngx-mfe-orchestrator" },
+    { name = "ngx-workshop-bff", address = "http://ngx-workshop-bff:3002/health", module = "heartbeat", service_name = "ngx-workshop-bff" },
+    { name = "seed-service-nestjs", address = "http://seed-service-nestjs:3003/health", module = "heartbeat", service_name = "seed-service-nestjs" },
+    { name = "service-user-metadata", address = "http://service-user-metadata:3004/health", module = "heartbeat", service_name = "service-user-metadata" },
+    { name = "service-nestjs-assessment-test", address = "http://service-nestjs-assessment-test:3005/health", module = "heartbeat", service_name = "service-nestjs-assessment-test" },
+    { name = "service-navigational-list", address = "http://service-navigational-list:3006/health", module = "heartbeat", service_name = "service-navigational-list" },
+    { name = "document", address = "http://document:3007/health", module = "heartbeat", service_name = "document" },
+    { name = "backstage", address = "http://backstage:3008/health", module = "heartbeat", service_name = "backstage" },
+    { name = "coding-labs", address = "http://coding-labs:3009/health", module = "heartbeat", service_name = "coding-labs" },
+    { name = "service-uploader", address = "http://service-uploader:3010/health", module = "heartbeat", service_name = "service-uploader" },
+    { name = "service-mcp-gateway", address = "http://service-mcp-gateway:3011/health", module = "heartbeat", service_name = "service-mcp-gateway" },
+    { name = "service-ai-publisher", address = "http://service-ai-publisher:3014/health", module = "heartbeat", service_name = "service-ai-publisher" },
+  ]
+}
+
+prometheus.scrape "heartbeats" {
+  targets = prometheus.exporter.blackbox.heartbeats.targets
+  scrape_interval = "30s"
+  scrape_timeout = "10s"
+  forward_to = [prometheus.relabel.heartbeats.receiver]
+}
+
+prometheus.relabel "heartbeats" {
+  rule {
+    source_labels = ["__name__"]
+    regex = "probe_success|probe_duration_seconds|probe_http_status_code|up"
+    action = "keep"
+  }
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  external_labels = { environment = "production" }
+  endpoint {
+    url = sys.env("GRAFANA_METRICS_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_METRICS_USER")
+      password = sys.env("GRAFANA_CLOUD_TOKEN")
+    }
+  }
+  wal {
+    truncate_frequency = "1h"
+    min_keepalive_time = "5m"
+    max_keepalive_time = "2h"
+  }
+}

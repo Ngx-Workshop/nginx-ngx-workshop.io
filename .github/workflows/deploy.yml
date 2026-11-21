@@ -2,8 +2,10 @@ name: Deploy nginx-ngx-workshop.io
 
 on:
   pull_request:
+    paths-ignore: ['ops/grafana/**', '.github/workflows/observability.yml']
   push:
     branches: [main]
+    paths-ignore: ['ops/grafana/**', '.github/workflows/observability.yml']
   workflow_dispatch:
 
 

@@ -1,0 +1,23 @@
+name: Validate Grafana collector
+on:
+  pull_request:
+    paths: ['ops/grafana/**', '.github/workflows/observability.yml']
+  push:
+    branches: [main]
+    paths: ['ops/grafana/**', '.github/workflows/observability.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate collector without production credentials or network ingestion
+        run: |
+          docker run --rm --env-file ops/grafana/grafana.env.example \
+            -v "$PWD/ops/grafana:/etc/alloy:ro" \
+            grafana/alloy:v1.22.0 validate /etc/alloy/config.alloy
+          python3 -m json.tool ops/grafana/dashboard.json >/dev/null

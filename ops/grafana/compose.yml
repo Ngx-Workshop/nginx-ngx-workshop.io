@@ -1,0 +1,37 @@
+services:
+  alloy:
+    image: grafana/alloy:v1.22.0
+    container_name: ngx-grafana-alloy
+    restart: unless-stopped
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 0.5
+    command:
+      - run
+      - --disable-reporting
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy
+      - /etc/alloy/config.alloy
+    env_file: /etc/ngx-workshop/observability/grafana.env
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - ./blackbox.yml:/etc/alloy/blackbox.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy
+    tmpfs: [/tmp:size=16m,noexec,nosuid]
+    networks: [ngx-net]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  ngx-net:
+    external: true
+
+volumes:
+  alloy-data:
