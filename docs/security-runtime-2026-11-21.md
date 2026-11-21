@@ -97,20 +97,9 @@ Both hosts retain a private root-owned release directory:
 
 Rollback requires stopping/disconnecting the replacement, restoring the old container's original name and network endpoints from its snapshot, restoring its saved restart policy, starting it, and repeating the HTTP checks. Reload Nginx after restoring service endpoints. Keep publisher single-writer semantics and its existing receipt volume. Do not start a rollback container alongside its replacement.
 
-## Remaining host operating-system work
+## Host operating-system follow-up
 
-The application host is Ubuntu 24.10 and the edge is Ubuntu 25.04. Both are end of life. Container patches do not update the host kernel, OpenSSH, Docker daemon or Ubuntu packages.
-
-No release upgrade was attempted: provider-level snapshot/recovery access was not available through connected tools, doctl was absent on the application host, and no DigitalOcean management tab was open. Snapshot and recovery access are prerequisites to a recoverable OS migration, not a request to reauthorize the already-approved patch work.
-
-Recommended next work:
-
-1. Obtain current DigitalOcean snapshots and verify recovery-console access after this runtime rollout.
-2. Inventory Docker installation, firewall/VPC settings, certificates/renewal hooks, host-owned secrets, static assets and named volumes. Keep sensitive backups private.
-3. Prefer replacement hosts on a supported Ubuntu LTS (26.04 LTS is supported), with explicit transfer and verification of these settings. Review existing private addresses, certificates and allowlists before cutover.
-4. Validate the same runtime and HTTP checks on the replacements, then cut over and retain the old hosts until acceptance.
-5. If choosing in-place upgrades instead, verify the supported sequential release path and third-party repositories first; do not assume 24.10 or 25.04 can jump directly to 26.04.
-6. After the host migration, verify unattended security updates and adopt regular reviewed base-image refreshes.
+The hosts started on Ubuntu 24.10 (application) and 25.04 (edge), both end of life. Container patches do not update the host kernel, OpenSSH, Docker daemon or Ubuntu packages. The subsequently authorized OS maintenance, recovery snapshots and validation are tracked in [Ubuntu LTS maintenance](ubuntu-lts-upgrade-2026-11-21.md).
 
 Official references:
 
@@ -123,13 +112,8 @@ Official references:
 
 All 14 local main checkouts were fetched and fast-forwarded to the published security commits. Before updating HEAD/index, every file changed by the remote commit was compared byte for byte against the local working file. Working-file SHA-256 manifests were checked afterward. No working-tree files changed during synchronization. Thirteen repositories are clean. service-auth retains only the pre-existing authentication.controller.ts change and untracked sign-out.spec.ts. Private sync checkpoints are in /tmp/ngx-git-sync-20261121 on the Mac; they are temporary recovery aids, not a durable release artifact.
 
-DigitalOcean browser management access is now available. The application Droplet is 604241659 and the edge Droplet is 604241182, both in NYC1. Their private addresses are 10.116.0.4 and 10.116.0.3 respectively. No current Droplet backups/snapshots are listed; automated backups are disabled on both.
+At the initial preflight, DigitalOcean browser management access became available. The application Droplet is 604241659 and the edge Droplet is 604241182, both in NYC1. Their private addresses are 10.116.0.4 and 10.116.0.3 respectively. No current backups/snapshots were listed at that preflight; automated backups were disabled on both. The later approved snapshot creation is recorded in the Ubuntu maintenance document.
 
 Both hosts pass dpkg --audit with no held packages. Both have screen and tmux, adequate root/boot free space and an installed release upgrader. Read-only release checks advertise Ubuntu 26.04.1 LTS. The upgrade path still needs validation before executing a release transition; do not infer that the advertisement authorizes skipping interim releases. Existing failed units were observed: logrotate on the edge; cloud-final, cloud-init-main and droplet-agent-install-retry on the application host. These findings are recorded as pre-existing, not caused by the container rollout.
 
-Snapshot requests are staged, not submitted:
-
-- pre-ubuntu-lts-nginx-20261121
-- pre-ubuntu-lts-nodejs-20261121
-
-DigitalOcean displays $0.06/GB/month based on snapshot space used. Current combined root usage is about 58 GiB, suggesting approximately $4/month combined while retained. Snapshot creation awaits approval for the added storage expense. No operating-system package upgrade, release upgrade, power-off or reboot has been performed. Once approved, quiesce services for consistent recovery snapshots, verify the snapshots are usable, then upgrade and validate one host at a time. Existing approval already covers the OS maintenance and downtime; only the new billable snapshot storage requires a decision.
+The user subsequently approved the additional snapshot storage cost. Both offline snapshots completed (edge 8.35 GB, application 53.05 GB; approximately $3.684/month combined while retained). Ubuntu maintenance is complete: both hosts run 26.04.1 LTS / kernel 7.0.0-44 with Docker 29.10.0. All 15 production containers were restored, their configuration audited, and all ten public checks plus the coding-lab sandbox smoke passed. See the linked maintenance record for details and validation limits. Existing approval covers the OS upgrades and downtime.
