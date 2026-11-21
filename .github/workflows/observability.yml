@@ -21,3 +21,5 @@ jobs:
             -v "$PWD/ops/grafana:/etc/alloy:ro" \
             grafana/alloy:v1.22.0 validate /etc/alloy/config.alloy
           python3 -m json.tool ops/grafana/dashboard.json >/dev/null
+          docker compose -f ops/grafana/compose.yml config --no-env-resolution --format json | \
+            python3 -c 'import json,sys; c=json.load(sys.stdin)["services"]["alloy"]; assert c["tmpfs"] == ["/tmp:size=16m,noexec,nosuid"]; assert any(v.get("volume", {}).get("nocopy") for v in c["volumes"] if v["target"] == "/var/lib/alloy")'

@@ -17,7 +17,7 @@
   ],
   "id": null,
   "uid": "ngx-workshop-services",
-  "title": "NGX Workshop · Service health and logs",
+  "title": "NGX Workshop \u00b7 Service health and logs",
   "description": "Private Docker heartbeat probes and native NestJS structured logs. Liveness does not assert MongoDB or upstream readiness.",
   "tags": [
     "ngx-workshop",
@@ -160,14 +160,16 @@
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
-          }
+          },
+          "range": true,
+          "instant": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "thresholds": {
             "mode": "absolute",
@@ -209,7 +211,9 @@
           "datasource": {
             "type": "loki",
             "uid": "${DS_LOKI}"
-          }
+          },
+          "range": true,
+          "instant": false
         }
       ],
       "fieldConfig": {
@@ -222,11 +226,11 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
               },
               {
-                "color": "green",
+                "color": "red",
                 "value": 1
               }
             ]

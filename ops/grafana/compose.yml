@@ -20,8 +20,12 @@ services:
       - ./config.alloy:/etc/alloy/config.alloy:ro
       - ./blackbox.yml:/etc/alloy/blackbox.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - alloy-data:/var/lib/alloy
-    tmpfs: [/tmp:size=16m,noexec,nosuid]
+      - type: volume
+        source: alloy-data
+        target: /var/lib/alloy
+        volume:
+          nocopy: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
     networks: [ngx-net]
     logging:
       driver: json-file

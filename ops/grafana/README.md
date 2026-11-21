@@ -29,6 +29,13 @@ docker compose -f compose.yml run --rm --no-deps alloy validate /etc/alloy/confi
 docker compose -f compose.yml up -d
 ```
 
+The state volume uses `nocopy: true` so Docker creates a fresh root-owned
+directory rather than copying the image's UID 473 ownership. This permits the
+root collector to write offsets/WAL with all capabilities dropped. An older
+volume copied from the image needs its top-level directory changed to root:root
+once before startup; preserve its contents. Keep the comma-separated tmpfs
+options quoted as one YAML value.
+
 The collector needs Docker API access to discover/read logs. A read-only socket
 mount does not make the Docker API read-only; this is a trusted host agent. It has
 no published port, dropped capabilities, a read-only root, 256 MiB memory and
@@ -53,7 +60,8 @@ probe_success{environment="production"}
 
 Check that all thirteen probes are `1`, the log query returns current JSON records,
 and Alloy has no remote-write authorization errors. A running collector is not
-proof of Grafana receipt. Pending account authorization means no ingestion yet.
+proof of Grafana receipt. See [activation evidence](DEPLOYMENT.md) for the verified
+production deployment and dashboard link.
 
 ## Local verification
 
