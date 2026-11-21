@@ -80,7 +80,7 @@ Dockerfiles and configured CI Node versions were patched in all 13 service repos
 
 The Nginx repository also updates the edge Dockerfile, CI backhaul validation image, backhaul reference documentation and reusable rollout helpers. This record is part of that Nginx security commit.
 
-Local working-tree edits mirror the published security changes; GitHub commits were created through the connector. Local Git HEADs were not advanced. Synchronize each checkout with its new remote main before subsequent delivery, preserving unrelated auth edits.
+At initial rollout completion, working-tree edits mirrored the published security changes and local Git HEADs had not yet advanced. The Git synchronization follow-up below resolves this.
 
 ## Recovery state
 
@@ -118,3 +118,18 @@ Official references:
 - https://nodejs.org/en/blog/vulnerability/november-2026-security-releases/
 - https://wiki.ubuntu.com/Releases
 
+
+## Git synchronization and Ubuntu preflight follow-up — 2026-11-21
+
+All 14 local main checkouts were fetched and fast-forwarded to the published security commits. Before updating HEAD/index, every file changed by the remote commit was compared byte for byte against the local working file. Working-file SHA-256 manifests were checked afterward. No working-tree files changed during synchronization. Thirteen repositories are clean. service-auth retains only the pre-existing authentication.controller.ts change and untracked sign-out.spec.ts. Private sync checkpoints are in /tmp/ngx-git-sync-20261121 on the Mac; they are temporary recovery aids, not a durable release artifact.
+
+DigitalOcean browser management access is now available. The application Droplet is 604241659 and the edge Droplet is 604241182, both in NYC1. Their private addresses are 10.116.0.4 and 10.116.0.3 respectively. No current Droplet backups/snapshots are listed; automated backups are disabled on both.
+
+Both hosts pass dpkg --audit with no held packages. Both have screen and tmux, adequate root/boot free space and an installed release upgrader. Read-only release checks advertise Ubuntu 26.04.1 LTS. The upgrade path still needs validation before executing a release transition; do not infer that the advertisement authorizes skipping interim releases. Existing failed units were observed: logrotate on the edge; cloud-final, cloud-init-main and droplet-agent-install-retry on the application host. These findings are recorded as pre-existing, not caused by the container rollout.
+
+Snapshot requests are staged, not submitted:
+
+- pre-ubuntu-lts-nginx-20261121
+- pre-ubuntu-lts-nodejs-20261121
+
+DigitalOcean displays $0.06/GB/month based on snapshot space used. Current combined root usage is about 58 GiB, suggesting approximately $4/month combined while retained. Snapshot creation awaits approval for the added storage expense. No operating-system package upgrade, release upgrade, power-off or reboot has been performed. Once approved, quiesce services for consistent recovery snapshots, verify the snapshots are usable, then upgrade and validate one host at a time. Existing approval already covers the OS maintenance and downtime; only the new billable snapshot storage requires a decision.
