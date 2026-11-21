@@ -21,5 +21,11 @@ jobs:
             -v "$PWD/ops/grafana:/etc/alloy:ro" \
             grafana/alloy:v1.22.0 validate /etc/alloy/config.alloy
           python3 -m json.tool ops/grafana/dashboard.json >/dev/null
-          docker compose -f ops/grafana/compose.yml config --no-env-resolution --format json | \
+          # Compose still checks env_file existence with --no-env-resolution.
+          # Validate an otherwise identical fixture using the committed dummy env.
+          compose_check=ops/grafana/compose.validation.yml
+          trap 'rm -f "$compose_check"' EXIT
+          sed 's|/etc/ngx-workshop/observability/grafana.env|./grafana.env.example|' \
+            ops/grafana/compose.yml > "$compose_check"
+          docker compose -f "$compose_check" config --format json | \
             python3 -c 'import json,sys; c=json.load(sys.stdin)["services"]["alloy"]; assert c["tmpfs"] == ["/tmp:size=16m,noexec,nosuid"]; assert any(v.get("volume", {}).get("nocopy") for v in c["volumes"] if v["target"] == "/var/lib/alloy")'

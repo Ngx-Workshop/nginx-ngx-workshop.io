@@ -20,7 +20,7 @@ Never include its contents in diagnostic output or Git.
   logs contained no warnings/errors and no host ports were bound.
 - Compose mount validation and a fresh disposable volume write check passed on
   the host with all capabilities dropped. CI also checks the parsed tmpfs and
-  nocopy settings without resolving the production credential file.
+  nocopy settings using an equivalent fixture with the committed dummy env file.
 
 [Service health and logs dashboard](https://ivorytoffee195.grafana.net/d/ngx-workshop-services/)
 uses the stack's existing `grafanacloud-ivorytoffee195-prom` and
