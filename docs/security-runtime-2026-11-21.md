@@ -20,7 +20,7 @@ No inference of actual server compromise was made; this rollout addresses publis
 Official images were pulled and their manifest digests inspected on the Docker hosts:
 
 - Node: `node:22.23.5-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a`.
-- Nginx: `nginx:1.30.7@sha256:7fadc6c0ff97965adbddf28027d934b111fc0221a554315dc274712f3fba24d3`.
+- Nginx (corrected registry reference; not a new inspection of the running containers): `nginx:1.30.7@sha256:7fad6c0dff97965adbddf28027d934b111fc0221a554315dc274712f3fba24d3`.
 
 The application's host source folders did not consistently reflect newer repository build configuration.
 The immediate Node rollout therefore used multi-stage runtime rebases: exact deployed application files were copied onto the official patched base. Every candidate's dist manifest matched the deployed application's dist files byte for byte. Auth's native bcrypt binding was tested on the new image. Both bases are within Alpine 3.24; no Node major upgrade or API change was introduced. Coding-labs retained its Docker CLI.
